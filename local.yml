@@ -1,0 +1,257 @@
+- name: Ansible instalacja kasy z ekranem dotykowym
+  hosts: localhost
+  user: root
+  connection: local
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    kasnet_rev: '2.1.333r202106251253~bionic-1' 
+    xkasnet_rev: '2.2.15r202106281337~bionic-1'
+  
+  tasks:
+    - include_vars: key_vault.yml
+
+    - set_fact:
+        kasnet_ver: "{{ kasnet_rev[:7] }}"
+
+    - set_fact:
+        xkasnet_ver: "{{ xkasnet_rev[:6] }}"
+
+    - copy: content="{{  secret_key }}" dest="/tmp/klucz.apt"
+    - copy: content="{{  brama_public_key }}" dest="/tmp/pub1"
+    - copy: content="{{  ansible_public_key }}" dest="/tmp/pub2"
+
+    - name: Dodanie usera ansiblenet
+      user:
+        name: ansiblenet
+        comment: Ansible Netis User
+        shell: /bin/bash
+        uid: 1888
+
+    - name: Ansiblenet do sudo
+      lineinfile:
+        path: /etc/sudoers
+        regexp: '^ansiblenet'
+        line: 'ansiblenet ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'        
+
+    - name: Dodanie klucza publicznego do ansiblenet
+      authorized_key:
+        user: ansiblenet
+        key: "{{ lookup('file', '/tmp/pub2') }}"
+        validate_certs: no
+        state: present
+
+    - name: Dodanie klucza publicznego do root
+      authorized_key:
+        user: root
+        key: "{{ lookup('file', '/tmp/pub1') }}"
+        validate_certs: no
+        state: present
+
+    - name: Dodanie klucza do apta
+      apt_key:
+        data: "{{ lookup('file', '/tmp/klucz.apt') }}"
+        state: present
+
+    - name: Dodanie auth do repo
+      blockinfile:
+          path: /etc/apt/auth.conf.d/repo.conf
+          block: | 
+              machine repo.netis.pl
+              login {{ repo_login }}
+              password {{ repo_pass }}
+          create: yes        
+
+      
+    - apt_repository:
+        repo: "{{ repo_netis }}"
+        state: present
+        
+        
+    - name: Zmiana hostname na kasaX    
+      hostname:
+        name: kasaX
+
+    - name: Installacja paczek
+      apt:
+        name: "{{ item }}"
+        state: present
+        force: yes
+        update_cache: yes
+        cache_valid_time: 3600
+      loop:
+        - openvpn
+        - curl
+        - mariadb-server
+        - openssh-server
+        - build-essential
+        - gpm
+        - vim
+        - joe
+        - gdb
+        - lynx
+        - ifupdown
+        - net-tools
+        - openjdk-8-jre
+        - fonts-roboto
+        - fonts-roboto-fontface
+        - fonts-roboto-hinted
+        - fonts-roboto-unhinted
+        - xorg
+        - cups-bsd
+        - nmap
+        - rsh-client
+        - setserial
+        - xinput-calibrator
+   
+   
+    - name: mysql update users
+      shell: mysql mysql -e "update user set plugin = '' where Host = 'localhost';"
+
+    
+    - name: restart mysql
+      systemd:
+        name: mysql
+        state: restarted
+
+    - unarchive:
+        src: keys.tgz 
+        dest: /etc/openvpn/
+
+    - name: "Create link /etc/openvpn/client -> /etc/openvpn/keys/client"
+      file:
+       src: /etc/openvpn/keys.4/client.4.101.conf 
+       dest: /etc/openvpn/client.4.101.conf
+       state: link
+  
+    - name: Openvpn enable w systemd
+      systemd:
+        name: openvpn@client.4.101
+        state: started
+        enabled: yes
+        
+    - name: ModemManager disable w systemd
+      systemd:
+         name: ModemManager
+         state: stopped
+         enabled: no
+         
+    - name: chmod -x /usr/sbin/ModemManager
+      file:
+         path: /usr/sbin/ModemManager
+         state: file
+         mode: -x 
+
+    - name: 'add 10. to /etc/hosts.allow'
+      lineinfile:
+        path: /etc/hosts.allow
+        line: "ALL:10."  
+
+
+    - name: Change password for sklep
+      shell: "echo root:{{ root_pass }} | sudo chpasswd"
+      no_log: True
+
+    - name: Allow root SSH access
+      lineinfile: 
+        dest: /etc/ssh/sshd_config
+        regexp: "^#PermitRootLogin prohibit-password"
+        line: "PermitRootLogin yes"
+        state: present
+
+    - name: add webapp
+      lineinfile:
+        path: /etc/hosts
+        line: "195.8.106.129 webapp.pep.pl"
+
+    - name: Installacja paczek
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        state: present
+        force: yes
+        name:
+          - "kasnet-server-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-config-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-libwaga-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-src-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-client-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-tools-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "xkasnet-client-{{ xkasnet_ver }}={{ xkasnet_rev }}"
+          - "xkasnet-client-trex-{{ xkasnet_ver }}={{ xkasnet_rev }}"
+          - "xkasnet-client-autostart-{{ xkasnet_ver }}={{ xkasnet_rev }}"
+
+    - name: Hold 
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:      
+          - "kasnet-server-{{ kasnet_ver }}"
+          - "kasnet-config-{{ kasnet_ver }}"
+          - "kasnet-libwaga-{{ kasnet_ver }}"
+          - "kasnet-src-{{ kasnet_ver }}"
+          - "kasnet-client-{{ kasnet_ver }}"
+          - "kasnet-tools-{{ kasnet_ver }}"
+          - "xkasnet-client-{{ xkasnet_ver }}"
+          - "xkasnet-client-trex-{{ xkasnet_ver }}"
+          - "xkasnet-client-autostart-{{ xkasnet_ver }}"
+          
+    - name: Remove file .run-config
+      file:
+         path: /home/kasa/.run-config
+         state: absent
+          
+    - name: chown /home/xkasnet
+      file:
+         path: /home/xkasnet/
+         state: directory
+         recurse: yes
+         owner: kasa
+         group: kasa
+
+    - name: chmod /home/kasa/prerun.sh
+      file:
+         path: /home/kasa/prerun.sh
+         state: file
+         mode: a+x
+
+    - name: Usuniecie paczek gnome, kde, lightdm
+      apt:
+        name: "{{ item }}"
+        state: absent
+        force: yes
+      loop:
+        - gdm3
+        - sddm
+        - lightdm  
+        - gdm  
+    
+    - name: dodanie DNS /etc/systemd/resolved.conf
+      lineinfile: 
+        dest: /etc/systemd/resolved.conf
+        regexp: "^#DNS="
+        line: "DNS=8.8.8.8"
+        state: present
+
+    - name: Restart resolvd
+      systemd:
+         state: restarted
+         name: systemd-resolved.service
+
+    - name: 'add socket_kasy to zmienne.dat'
+      lineinfile:
+        path: /home/kasa/konfiguracja/zmienne.dat
+        line: "socket_kasy /var/run/mysqld/mysqld.sock"
+
+    - name: Informacja
+      debug:
+        msg: "Instalacja zostala zakonczona. Komputer zostanie automatycznie zrestartowany. Prosze czekac..."
+
+    - name: sleep for 30sec
+      wait_for:
+        timeout: 45
+      delegate_to: localhost
+      
+    - name: Restart komputera
+      command: reboot
