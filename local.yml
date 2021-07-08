@@ -179,6 +179,7 @@
           - "kasnet-client-{{ kasnet_ver }}={{ kasnet_rev }}"
           - "kasnet-tools-{{ kasnet_ver }}={{ kasnet_rev }}"
           - "xkasnet-client-{{ xkasnet_ver }}={{ xkasnet_rev }}"
+          - "xkasnet-libnative-jni-{{ xkasnet_ver }}={{ xkasnet_rev }}"
           - "xkasnet-client-trex-{{ xkasnet_ver }}={{ xkasnet_rev }}"
           - "xkasnet-client-autostart-{{ xkasnet_ver }}={{ xkasnet_rev }}"
 
@@ -194,6 +195,7 @@
           - "kasnet-client-{{ kasnet_ver }}"
           - "kasnet-tools-{{ kasnet_ver }}"
           - "xkasnet-client-{{ xkasnet_ver }}"
+          - "xkasnet-libnative-jni-{{ xkasnet_ver }}"
           - "xkasnet-client-trex-{{ xkasnet_ver }}"
           - "xkasnet-client-autostart-{{ xkasnet_ver }}"
           
