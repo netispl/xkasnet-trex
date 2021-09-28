@@ -5,7 +5,7 @@
 
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    kasnet_rev: '2.1.333r202109161346~bionic-1'
+    kasnet_rev: '2.1.333r202109231452~bionic-1'
     xkasnet_rev: '2.2.16r202109211059~bionic-1'
   
   tasks:
