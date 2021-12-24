@@ -1,0 +1,13 @@
+#!/bin/bash 
+PLK=/tmp/serv_po_zmianowym
+killall serv
+
+date > $PLK
+bin/serv -c -oParagonyPozycje
+date >> $PLK
+bin/serv -c -oParagonyNaglowki
+date >> $PLK
+bin/serv -c -oParagonyPlatnosci
+date >> $PLK
+bin/serv -c -oWplatyWyplaty
+date >> $PLK
