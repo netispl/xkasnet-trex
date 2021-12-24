@@ -63,7 +63,6 @@
               password {{ repo_pass }}
           create: yes        
 
-      
     - apt_repository:
         repo: "{{ repo_netis }}"
         state: present
@@ -72,7 +71,28 @@
       hostname:
         name: kasaX
 
-    - name: Installacja paczek
+    - name: Wylaczenie aktualizacji systemu podczas instalacji
+      systemd:
+         state: stopped
+         name: "{{ item }}"
+      loop:
+         - apt-daily.service
+         - apt-daily.timer
+         - apt-daily-upgrade.timer 
+
+    - name: Usuniecie niepotrzebnych pakietow
+      apt:
+        name: "{{ item }}"
+        state: absent
+        force: yes
+      loop:
+        - gdm3
+        - sddm
+        - lightdm  
+        - gdm 
+        - unattended-upgrades
+    
+    - name: Installacja wymaganych pakietow
       apt:
         name: "{{ item }}"
         state: present
@@ -104,6 +124,40 @@
         - setserial
         - xinput-calibrator
    
+    - name: Installacja kasy
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        state: present
+        force: yes
+        name:
+          - "kasnet-server-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-config-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-libwaga-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-src-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-client-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "kasnet-tools-{{ kasnet_ver }}={{ kasnet_rev }}"
+          - "xkasnet-client-{{ xkasnet_ver }}={{ xkasnet_rev }}"
+          - "xkasnet-libnative-jni-{{ xkasnet_ver }}={{ xkasnet_rev }}"
+          - "xkasnet-client-trex-{{ xkasnet_ver }}={{ xkasnet_rev }}"
+          - "xkasnet-client-autostart-{{ xkasnet_ver }}={{ xkasnet_rev }}"
+
+    - name: Hold 
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:      
+          - "kasnet-server-{{ kasnet_ver }}"
+          - "kasnet-config-{{ kasnet_ver }}"
+          - "kasnet-libwaga-{{ kasnet_ver }}"
+          - "kasnet-src-{{ kasnet_ver }}"
+          - "kasnet-client-{{ kasnet_ver }}"
+          - "kasnet-tools-{{ kasnet_ver }}"
+          - "xkasnet-client-{{ xkasnet_ver }}"
+          - "xkasnet-libnative-jni-{{ xkasnet_ver }}"
+          - "xkasnet-client-trex-{{ xkasnet_ver }}"
+          - "xkasnet-client-autostart-{{ xkasnet_ver }}"
+    
     - name: mysql update users
       shell: mysql mysql -e "update user set plugin = '' where Host = 'localhost';"
 
@@ -144,40 +198,6 @@
       lineinfile:
         path: /etc/hosts
         line: "195.8.106.129 webapp.pep.pl"
-
-    - name: Installacja paczek
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-        state: present
-        force: yes
-        name:
-          - "kasnet-server-{{ kasnet_ver }}={{ kasnet_rev }}"
-          - "kasnet-config-{{ kasnet_ver }}={{ kasnet_rev }}"
-          - "kasnet-libwaga-{{ kasnet_ver }}={{ kasnet_rev }}"
-          - "kasnet-src-{{ kasnet_ver }}={{ kasnet_rev }}"
-          - "kasnet-client-{{ kasnet_ver }}={{ kasnet_rev }}"
-          - "kasnet-tools-{{ kasnet_ver }}={{ kasnet_rev }}"
-          - "xkasnet-client-{{ xkasnet_ver }}={{ xkasnet_rev }}"
-          - "xkasnet-libnative-jni-{{ xkasnet_ver }}={{ xkasnet_rev }}"
-          - "xkasnet-client-trex-{{ xkasnet_ver }}={{ xkasnet_rev }}"
-          - "xkasnet-client-autostart-{{ xkasnet_ver }}={{ xkasnet_rev }}"
-
-    - name: Hold 
-      dpkg_selections:
-        name: "{{ item }}"
-        selection: hold
-      loop:      
-          - "kasnet-server-{{ kasnet_ver }}"
-          - "kasnet-config-{{ kasnet_ver }}"
-          - "kasnet-libwaga-{{ kasnet_ver }}"
-          - "kasnet-src-{{ kasnet_ver }}"
-          - "kasnet-client-{{ kasnet_ver }}"
-          - "kasnet-tools-{{ kasnet_ver }}"
-          - "xkasnet-client-{{ xkasnet_ver }}"
-          - "xkasnet-libnative-jni-{{ xkasnet_ver }}"
-          - "xkasnet-client-trex-{{ xkasnet_ver }}"
-          - "xkasnet-client-autostart-{{ xkasnet_ver }}"
           
     - name: Remove file .run-config
       file:
@@ -197,18 +217,6 @@
          path: /home/kasa/prerun.sh
          state: file
          mode: a+x
-
-    - name: Usuniecie niepotrzebnych pakietow
-      apt:
-        name: "{{ item }}"
-        state: absent
-        force: yes
-      loop:
-        - gdm3
-        - sddm
-        - lightdm  
-        - gdm 
-        - unattended-upgrades
     
     - name: dodanie DNS /etc/systemd/resolved.conf
       lineinfile: 
