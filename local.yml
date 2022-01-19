@@ -6,7 +6,7 @@
   vars:
     ansible_python_interpreter: /usr/bin/python3
     kasnet_rev: '2.1.333r202111171146~bionic-1'
-    xkasnet_rev: '2.2.16r202110291353~bionic-1'
+    xkasnet_rev: '2.2.16r202201051541~bionic-1'
   
   tasks:
     - include_vars: key_vault.yml
